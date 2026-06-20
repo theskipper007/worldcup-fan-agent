@@ -9,13 +9,15 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 
 from app.agents.live_data import LiveDataAgent
-from app.apifootball.client import ApiFootballClient
+from app.agents.predictor import PredictorAgent
+from app.agents.reasoning import ReasonerError
+from app.apifootball.client import ApiFootballClient, ApiFootballError, RateLimitExhausted
 from app.config import get_settings
 from app.db.database import init_db, make_engine, make_session_factory
-from app.dependencies import get_live_data_agent
+from app.dependencies import get_live_data_agent, get_predictor_agent
 
 # Match columns surfaced in API responses.
 _MATCH_FIELDS = (
@@ -77,13 +79,46 @@ def standings(agent: LiveDataAgent = Depends(get_live_data_agent)) -> dict:
     return {"count": len(rows), "standings": rows}
 
 
+@app.get("/predict")
+def predict(
+    fixture: int = Query(..., description="API-Football fixture id"),
+    predictor: PredictorAgent = Depends(get_predictor_agent),
+) -> dict:
+    """Produce (and store) the baseline + agent prediction for a fixture (see ../docs/eval.md)."""
+    if predictor.client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="API_FOOTBALL_KEY not configured — add it to .env (see .env.example).",
+        )
+    try:
+        return predictor.predict(fixture)
+    except ReasonerError as exc:
+        # The OSS reasoning model is unreachable (e.g. Ollama not running / model not pulled).
+        raise HTTPException(status_code=503, detail=str(exc))
+    except (ApiFootballError, RateLimitExhausted) as exc:
+        # Upstream data problem (plan limits, rate budget, bad fixture) — surface it cleanly, not 500.
+        raise HTTPException(status_code=502, detail=f"API-Football: {exc}")
+
+
+@app.post("/predict/{fixture}/settle")
+def settle(
+    fixture: int,
+    predictor: PredictorAgent = Depends(get_predictor_agent),
+) -> dict:
+    """After full-time, fill the actual result and compute correctness for the scoreboard."""
+    result = predictor.settle(fixture)
+    if result is None:
+        raise HTTPException(status_code=404, detail="no prediction or match row for that fixture")
+    return result
+
+
+@app.get("/scoreboard")
+def get_scoreboard(predictor: PredictorAgent = Depends(get_predictor_agent)) -> dict:
+    """Return the public predictor scoreboard: baseline vs agent hit-rate + lift (../docs/eval.md)."""
+    return predictor.scoreboard()
+
+
 @app.get("/digest")
 def get_digest(date: str, teams: str, language: str = "en") -> dict:
     """Return the morning digest for the given followed teams (see ../docs/agents.md)."""
     raise NotImplementedError("digest generation not implemented yet")
-
-
-@app.get("/scoreboard")
-def get_scoreboard() -> dict:
-    """Return the public predictor scoreboard (see ../docs/eval.md)."""
-    raise NotImplementedError("scoreboard not implemented yet")

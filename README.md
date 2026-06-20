@@ -29,7 +29,7 @@ The original narrative plan is kept at [`worldcup-agent-plan.md`](worldcup-agent
 
 ## Stack
 
-Python + FastAPI · Claude API (tool use) · SQLite · Streamlit · API-Football (free tier).
+Python + FastAPI · open-source LLM via Ollama (OpenAI-compatible) · SQLite · Streamlit · API-Football (free tier).
 Deploys as a persistent web service (not serverless — per-IP rate limiting).
 
 ## Layout

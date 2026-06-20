@@ -14,8 +14,18 @@ class Settings(BaseSettings):
     api_football_key: str = ""
     api_football_base_url: str = "https://v3.football.api-sports.io"
 
-    anthropic_api_key: str = ""
-    anthropic_model: str = "claude-opus-4-8"
+    # Reasoning layer is an open-source model served over an OpenAI-compatible API.
+    # Default: local Ollama. Swap to Groq/OpenRouter/etc. by changing these three.
+    # Set reasoner_provider="heuristic" to run with no LLM at all (deterministic fallback).
+    reasoner_provider: str = "ollama"  # "ollama" | "openai_compatible" | "heuristic"
+    llm_base_url: str = "http://localhost:11434/v1"
+    llm_api_key: str = "ollama"  # Ollama ignores this; hosted providers need a real key
+    llm_model: str = "qwen3.5:9b"
+    # Qwen3 thinking mode. A single prediction is one stats payload + instructions, so we keep
+    # thinking off (faster, deterministic) via the /no_think soft-switch. Flip to True to enable.
+    llm_enable_thinking: bool = False
+    # 8K is ample for one prediction's JSON; bump toward 16K only if you turn thinking back on.
+    llm_max_tokens: int = 8192
 
     # The competition is fixed for this project.
     wc_league_id: int = 1

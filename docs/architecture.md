@@ -2,14 +2,14 @@
 
 ## Overview
 
-A single **orchestrator** agent (Claude, tool use) routes work to four **specialist** agents.
+A single **orchestrator** agent (open-source LLM via Ollama) routes work to four **specialist** agents.
 Every specialist talks to API-Football through **one shared rate-limited client** — never
 directly — so the 10 req/min free-tier budget is enforced in one place
 (see [api-football.md](api-football.md)).
 
 ```mermaid
 flowchart TD
-    User[Fan / scheduler] --> Orch[Orchestrator agent\nClaude tool-use]
+    User[Fan / scheduler] --> Orch[Orchestrator agent\nOSS LLM via Ollama]
     Orch --> LD[Live data agent]
     Orch --> PR[Predictor agent]
     Orch --> TA[Tactics agent]
@@ -37,7 +37,7 @@ flowchart TD
 
 | Agent | Responsibility | Primary endpoints |
 |---|---|---|
-| Orchestrator | Routes a digest/predict/analyze request to specialists, assembles output | — (Claude tool-use) |
+| Orchestrator | Routes a digest/predict/analyze request to specialists, assembles output | — (OSS LLM via Ollama) |
 | Live data | Scores, fixtures, standings, rounds | `/fixtures?live=all`, `/fixtures?ids=…`, `/standings`, `/fixtures/rounds` |
 | Predictor | Baseline prediction + reasoning layer; writes eval rows | `/predictions?fixture=ID` |
 | Tactics | Stat-grounded match narrative + player-of-match | `/fixtures?id=ID`, `/fixtures/players`, `/coachs`, `/fixtures/headtohead` |

@@ -43,8 +43,10 @@ honestly logs how well it predicts versus the API-Football baseline.
 
 ## Stack (locked)
 
-- **Backend:** Python + FastAPI, Claude API (tool use). Models: default to latest Claude
-  (`claude-opus-4-8` for orchestration/reasoning; a smaller model for routing if needed).
+- **Backend:** Python + FastAPI. The LLM reasoning layer is an **open-source model** served over an
+  OpenAI-compatible API — default **local Ollama** (`qwen3.5:9b`, thinking off). Swappable to
+  Groq/OpenRouter/vLLM by changing `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`. Each call is
+  stateless (one stats payload + instructions; no cross-agent history).
 - **DB:** SQLite (`fastest to ship`; schema written to migrate to Postgres later).
 - **Frontend:** Streamlit.
 - **Data:** API-Football free tier (10 req/min) — see the rate-limit ruleset before writing any client.

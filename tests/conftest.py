@@ -60,6 +60,25 @@ def fixtures_payload() -> dict:
 
 
 @pytest.fixture
+def predictions_payload() -> dict:
+    return {
+        "errors": [],
+        "response": [
+            {
+                "predictions": {
+                    "winner": {"id": 10, "name": "Brazil"},
+                    "win_or_draw": False,
+                    "advice": "Combo Double chance : Brazil or draw",
+                    "percent": {"home": "55%", "draw": "25%", "away": "20%"},
+                },
+                "teams": {"home": {"id": 10, "name": "Brazil"},
+                          "away": {"id": 20, "name": "Serbia"}},
+            }
+        ],
+    }
+
+
+@pytest.fixture
 def standings_payload() -> dict:
     return {
         "errors": [],

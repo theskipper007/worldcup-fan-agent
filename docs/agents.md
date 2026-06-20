@@ -2,7 +2,10 @@
 
 All agents call API-Football only through the shared rate-limited client
 ([api-football.md](api-football.md)). Each writes exactly the table named in
-[data-model.md](data-model.md). Claude tool-use models default to the latest Claude family.
+[data-model.md](data-model.md). The LLM reasoning layer is an open-source model over an
+OpenAI-compatible API (default: local Ollama, `qwen3.5:9b`, thinking off) — see
+[`../app/agents/reasoning.py`](../app/agents/reasoning.py). Each call is stateless: only the
+structured data for that prediction is passed, never conversation history across agents.
 
 ---
 
