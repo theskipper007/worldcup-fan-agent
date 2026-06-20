@@ -99,3 +99,27 @@ def test_raises_on_api_errors_payload():
 def test_missing_key_raises_when_building_real_client():
     with pytest.raises(ValueError):
         ApiFootballClient(settings=Settings(api_football_key=""))
+
+
+def test_cache_throttles_identical_calls_within_ttl(fixtures_payload):
+    """Free tier is 100 req/day: identical calls hit the network at most once per TTL."""
+    calls = {"n": 0}
+    clock = {"t": 1000.0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(200, json=fixtures_payload)
+
+    client = make_client(handler, cache_ttl=1800.0, monotonic=lambda: clock["t"])
+
+    client.get_fixtures_by_date("2026-06-21")
+    client.get_fixtures_by_date("2026-06-21")  # within 30 min → served from cache
+    assert calls["n"] == 1
+
+    clock["t"] += 1801  # past the 30-minute window
+    client.get_fixtures_by_date("2026-06-21")
+    assert calls["n"] == 2
+
+    # Different params are cached independently.
+    client.get_fixtures_by_date("2026-06-22")
+    assert calls["n"] == 3

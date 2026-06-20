@@ -59,14 +59,22 @@ class ApiFootballClient:
         acquire_timeout: float = 30.0,
         max_retries: int = 4,
         backoff_base: float = 1.0,
+        cache_ttl: float | None = None,
         sleep=time.sleep,
+        monotonic=time.monotonic,
     ) -> None:
         self.settings = settings or get_settings()
         self.budget = budget or shared_budget
         self.acquire_timeout = acquire_timeout
         self.max_retries = max_retries
         self.backoff_base = backoff_base
+        # Free tier = 100 req/DAY, so identical calls are cached for this long (default 30 min).
+        self.cache_ttl = (
+            self.settings.cache_ttl_seconds if cache_ttl is None else cache_ttl
+        )
         self._sleep = sleep
+        self._monotonic = monotonic
+        self._cache: dict[tuple, tuple[float, dict]] = {}
         self._owns_http = http_client is None
         self._http = http_client or self._build_http_client()
         self.last_rate_limit = RateLimitInfo()
@@ -96,8 +104,17 @@ class ApiFootballClient:
             minute_remaining=_to_int(headers.get("X-RateLimit-Remaining")),
         )
 
-    def _request(self, path: str, params: dict | None = None) -> dict:
+    def _request(
+        self, path: str, params: dict | None = None, *, force_refresh: bool = False
+    ) -> dict:
         merged = {**self._default_params(), **(params or {})}
+        cache_key = (path, tuple(sorted((k, str(v)) for k, v in merged.items())))
+
+        if self.cache_ttl > 0 and not force_refresh:
+            cached = self._cache.get(cache_key)
+            if cached is not None and (self._monotonic() - cached[0]) < self.cache_ttl:
+                return cached[1]
+
         attempt = 0
         while True:
             if not self.budget.acquire(timeout=self.acquire_timeout):
@@ -120,6 +137,8 @@ class ApiFootballClient:
             errors = data.get("errors")
             if errors:  # empty list/dict is falsy
                 raise ApiFootballError(str(errors))
+            if self.cache_ttl > 0:
+                self._cache[cache_key] = (self._monotonic(), data)
             return data
 
     @staticmethod

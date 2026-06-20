@@ -10,8 +10,16 @@ from app.config import Settings
 from app.rate_limiter import TokenBucket
 
 
-def make_client(handler, *, sleep=lambda _s: None, budget=None) -> ApiFootballClient:
-    """Build an ApiFootballClient backed by an httpx MockTransport ``handler``."""
+def make_client(
+    handler, *, sleep=lambda _s: None, budget=None, cache_ttl=0.0, monotonic=None
+) -> ApiFootballClient:
+    """Build an ApiFootballClient backed by an httpx MockTransport ``handler``.
+
+    Caching is OFF by default (cache_ttl=0) so each call hits the handler; pass a cache_ttl
+    (and optionally a monotonic clock) to exercise the 30-minute throttle.
+    """
+    import time as _time
+
     transport = httpx.MockTransport(handler)
     http = httpx.Client(transport=transport, base_url="https://test.local")
     return ApiFootballClient(
@@ -19,6 +27,8 @@ def make_client(handler, *, sleep=lambda _s: None, budget=None) -> ApiFootballCl
         budget=budget or TokenBucket(capacity=50, refill_rate=50, per=60.0),
         http_client=http,
         sleep=sleep,
+        monotonic=monotonic or _time.monotonic,
+        cache_ttl=cache_ttl,
         backoff_base=0.0,
     )
 

@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     db_path: str = "worldcup.db"
     backend_url: str = "http://localhost:8000"
 
+    # Free tier is 100 requests/DAY. Cache identical API-Football calls so any given
+    # request hits the network at most once per this many seconds (default 30 min).
+    cache_ttl_seconds: int = 1800
+    # Informational daily cap (the cache above is what actually protects it).
+    daily_request_cap: int = 100
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
